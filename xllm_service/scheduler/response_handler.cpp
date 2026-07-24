@@ -20,12 +20,14 @@ limitations under the License.
 #include "common/anthropic_tracer.h"
 #include "http_service/anthropic_adapter.h"
 #include "http_service/anthropic_stream_encoder.h"
+#include "http_service/usage_proto_adapter.h"
 #include "scheduler/xllm_chat_parse_bridge.h"
 #include "xllm/xllm/api_service/stream_output_parser.h"
 #include "xllm/xllm/api_service/utils.h"
 #include "xllm/xllm/function_call/function_call_parser.h"
 
 namespace xllm_service {
+
 namespace {
 
 size_t find_tool_start(const std::string& text) {
@@ -395,12 +397,7 @@ bool ResponseHandler::send_delta_to_client(
     response.set_id(request_id);
     response.set_created(created_time);
     response.set_model(model);
-    auto* proto_usage = response.mutable_usage();
-    proto_usage->set_prompt_tokens(
-        static_cast<int32_t>(usage.num_prompt_tokens));
-    proto_usage->set_completion_tokens(
-        static_cast<int32_t>(usage.num_generated_tokens));
-    proto_usage->set_total_tokens(static_cast<int32_t>(usage.num_total_tokens));
+    *response.mutable_usage() = to_openai_usage_proto(usage);
     if (!call_data->write(response)) {
       return false;
     }
@@ -476,12 +473,7 @@ bool ResponseHandler::send_delta_to_client(
     response.set_created(created_time);
     response.set_model(model);
     response.mutable_choices();
-    auto* proto_usage = response.mutable_usage();
-    proto_usage->set_prompt_tokens(
-        static_cast<int32_t>(usage.num_prompt_tokens));
-    proto_usage->set_completion_tokens(
-        static_cast<int32_t>(usage.num_generated_tokens));
-    proto_usage->set_total_tokens(static_cast<int32_t>(usage.num_total_tokens));
+    *response.mutable_usage() = to_openai_usage_proto(usage);
     if (!call_data->write(response)) {
       return false;
     }
@@ -761,12 +753,7 @@ bool ResponseHandler::send_result_to_client(
   // add usage statistics
   if (req_output.usage.has_value()) {
     const auto& usage = req_output.usage.value();
-    auto* proto_usage = response.mutable_usage();
-    proto_usage->set_prompt_tokens(
-        static_cast<int32_t>(usage.num_prompt_tokens));
-    proto_usage->set_completion_tokens(
-        static_cast<int32_t>(usage.num_generated_tokens));
-    proto_usage->set_total_tokens(static_cast<int32_t>(usage.num_total_tokens));
+    *response.mutable_usage() = to_openai_usage_proto(usage);
   }
 
   return call_data->write_and_finish(response);
@@ -809,12 +796,7 @@ bool ResponseHandler::send_result_to_client(
   // add usage statistics
   if (req_output.usage.has_value()) {
     const auto& usage = req_output.usage.value();
-    auto* proto_usage = response.mutable_usage();
-    proto_usage->set_prompt_tokens(
-        static_cast<int32_t>(usage.num_prompt_tokens));
-    proto_usage->set_completion_tokens(
-        static_cast<int32_t>(usage.num_generated_tokens));
-    proto_usage->set_total_tokens(static_cast<int32_t>(usage.num_total_tokens));
+    *response.mutable_usage() = to_openai_usage_proto(usage);
   }
 
   return call_data->write_and_finish(response);

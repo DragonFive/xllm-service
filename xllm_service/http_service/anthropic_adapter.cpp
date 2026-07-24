@@ -30,8 +30,10 @@ limitations under the License.
 #include "api_service/chat_json_parser.h"
 #include "chat_template/message_projection.h"
 #include "common/xllm/uuid.h"
+#include "http_service/usage_proto_adapter.h"
 
 namespace xllm_service {
+
 namespace {
 
 thread_local llm::ShortUUID short_uuid;
@@ -375,11 +377,8 @@ void fill_usage(const llm::RequestOutput& request_output,
   if (!request_output.usage.has_value()) {
     return;
   }
-  const auto& usage = request_output.usage.value();
-  auto* proto_usage = response->mutable_usage();
-  proto_usage->set_input_tokens(static_cast<int32_t>(usage.num_prompt_tokens));
-  proto_usage->set_output_tokens(
-      static_cast<int32_t>(usage.num_generated_tokens));
+  *response->mutable_usage() =
+      to_anthropic_usage_proto(request_output.usage.value());
 }
 
 bool normalize_stream_event_json(const xllm::proto::AnthropicStreamEvent& event,
@@ -410,6 +409,10 @@ bool normalize_stream_event_json(const xllm::proto::AnthropicStreamEvent& event,
         auto& usage = parsed["usage"];
         usage["input_tokens"] = event.usage().input_tokens();
         usage["output_tokens"] = event.usage().output_tokens();
+        if (event.usage().has_cache_read_input_tokens()) {
+          usage["cache_read_input_tokens"] =
+              event.usage().cache_read_input_tokens();
+        }
       }
     }
 

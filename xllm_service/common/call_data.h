@@ -223,6 +223,13 @@ class StreamCallData : public CallData {
   ::google::protobuf::Closure* done() { return done_; }
   bool finished() { return finished_; }
 
+ protected:
+  bool serialize_response(Response& response,
+                          std::string* json,
+                          std::string* error) {
+    return json2pb::ProtoMessageToJson(response, json, json_options_, error);
+  }
+
  private:
   brpc::Controller* controller_;
   ::google::protobuf::Closure* done_;
@@ -244,8 +251,19 @@ class StreamCallData : public CallData {
 using CompletionCallData = StreamCallData<::xllm::proto::CompletionRequest,
                                           ::xllm::proto::CompletionResponse>;
 
-using ChatCallData =
-    StreamCallData<::xllm::proto::ChatRequest, ::xllm::proto::ChatResponse>;
+class ChatCallData final : public StreamCallData<::xllm::proto::ChatRequest,
+                                                 ::xllm::proto::ChatResponse> {
+ public:
+  using Base =
+      StreamCallData<::xllm::proto::ChatRequest, ::xllm::proto::ChatResponse>;
+
+  using Base::Base;
+  using Base::write;
+  using Base::write_and_finish;
+
+  bool write_and_finish(::xllm::proto::ChatResponse& response);
+  bool write(::xllm::proto::ChatResponse& response);
+};
 
 class AnthropicCallData
     : public StreamCallData<::xllm::proto::ChatRequest,

@@ -36,6 +36,8 @@ namespace xllm_service {
 
 namespace {
 
+constexpr float kDefaultTemperature = 1.0f;
+
 thread_local llm::ShortUUID short_uuid;
 
 AnthropicAdaptResult ok_result() { return AnthropicAdaptResult{}; }
@@ -357,6 +359,8 @@ void fill_generation_params(
   }
   if (anthropic_request.has_temperature()) {
     chat_request->set_temperature(anthropic_request.temperature());
+  } else {
+    chat_request->set_temperature(kDefaultTemperature);
   }
   if (anthropic_request.has_top_p()) {
     chat_request->set_top_p(anthropic_request.top_p());
@@ -366,6 +370,20 @@ void fill_generation_params(
   }
   if (anthropic_request.has_ignore_eos()) {
     chat_request->set_ignore_eos(anthropic_request.ignore_eos());
+  }
+  if (anthropic_request.has_output_config() &&
+      anthropic_request.output_config().has_effort() &&
+      !anthropic_request.output_config().effort().empty()) {
+    (*chat_request->mutable_chat_template_kwargs()
+          ->mutable_fields())["reasoning_effort"]
+        .set_string_value(anthropic_request.output_config().effort());
+  }
+  if (anthropic_request.has_thinking() &&
+      (anthropic_request.thinking().type() == "adaptive" ||
+       anthropic_request.thinking().type() == "enabled")) {
+    (*chat_request->mutable_chat_template_kwargs()
+          ->mutable_fields())["thinking"]
+        .set_bool_value(true);
   }
   for (const auto& stop : anthropic_request.stop_sequences()) {
     chat_request->add_stop(stop);

@@ -16,6 +16,7 @@ limitations under the License.
 #include "common/call_data.h"
 
 #include <brpc/controller.h>
+#include <google/protobuf/util/json_util.h>
 #include <gtest/gtest.h>
 
 #include <string>
@@ -29,6 +30,22 @@ class TestClosure : public google::protobuf::Closure {
   void Run() override { ran = true; }
   bool ran = false;
 };
+
+TEST(CallDataTest, ChatRequestParsesJsonObjectResponseFormat) {
+  xllm::proto::ChatRequest request;
+  google::protobuf::util::JsonParseOptions options;
+  options.ignore_unknown_fields = true;
+
+  const auto status = google::protobuf::util::JsonStringToMessage(
+      R"({"model":"test","messages":[{"role":"user","content":"ping"}],
+          "response_format":{"type":"json_object"}})",
+      &request,
+      options);
+
+  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(request.has_response_format());
+  EXPECT_EQ(request.response_format().type(), "json_object");
+}
 
 TEST(CallDataTest, NonStreamWriteAndFinishTracesAttachment) {
   brpc::Controller controller;

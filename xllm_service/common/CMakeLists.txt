@@ -24,6 +24,7 @@ cc_library(
     xllm/uuid.h
   SRCS
     anthropic_tracer.cpp
+    call_data.cpp
     global_gflags.cpp
     json_reader.cpp
     threadpool.cpp
